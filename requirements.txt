@@ -1,0 +1,30 @@
+# Cài PyTorch trước theo máy của bạn (CPU hoặc CUDA): https://pytorch.org/get-started/locally/
+# Sau đó: pip install -r requirements.txt
+
+# --- Mô hình và dữ liệu ---
+transformers
+datasets
+accelerate
+peft
+sentencepiece
+
+# --- Đánh giá ---
+evaluate
+rouge-score
+bert-score
+seqeval
+nltk
+
+# --- NER tự động / tiện ích ---
+pandas
+numpy
+scikit-learn
+pyyaml
+tqdm
+
+# --- Demo web ---
+gradio
+
+# --- Phát triển ---
+pytest
+jupyter

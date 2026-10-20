@@ -1,0 +1,45 @@
+# ===== DỮ LIỆU LÂM SÀNG: TUYỆT ĐỐI KHÔNG ĐƯA LÊN GIT (vi phạm DUA của PhysioNet) =====
+data/raw/*
+data/interim/*
+data/processed/*
+data/external/*
+!data/**/.gitkeep
+*.csv
+*.csv.gz
+*.tsv
+*.jsonl
+*.parquet
+*.zip
+*.gz
+
+# ===== Mô hình, checkpoint, kết quả sinh ra từ dữ liệu thật =====
+models/*
+!models/.gitkeep
+outputs/results/*
+!outputs/results/.gitkeep
+*.ckpt
+*.pt
+*.pth
+*.bin
+*.safetensors
+wandb/
+runs/
+lightning_logs/
+
+# ===== Python / môi trường =====
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+.env
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# ===== IDE / hệ điều hành =====
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db

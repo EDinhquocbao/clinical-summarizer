@@ -1,0 +1,9 @@
+# Cấu hình huấn luyện NER (token classification)
+model_name: dmis-lab/biobert-base-cased-v1.1      # đổi sang emilyalsentzer/Bio_ClinicalBERT để so sánh
+dataset: bc5cdr                                    # bc5cdr | ncbi_disease | entitycoding (khi có quyền)
+max_length: 256
+batch_size: 16
+learning_rate: 5.0e-5
+epochs: 3
+seed: 42
+output_dir: models/ner_biobert
