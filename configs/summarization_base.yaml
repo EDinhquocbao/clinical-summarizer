@@ -1,0 +1,24 @@
+# Cấu hình chung cho 3 mô hình tóm tắt (seq2seq_attn, pointer_gen, pointer_gen_cov)
+# Dữ liệu tạm: Asclepius (tổng hợp, công khai). Khi có MIMIC: đổi data_dir và vocab_path.
+data_dir: data/processed/asclepius_sum
+vocab_path: models/vocab_asclepius_sum.json
+vocab_size: 30000
+
+max_source_len: 512        # ~p95 độ dài đầu vào (token)
+max_target_len: 130        # ~p90 độ dài tóm tắt
+emb_dim: 128               # như See et al. (2017)
+hidden_dim: 256
+dropout: 0.2               # dữ liệu nhỏ (~16 nghìn cặp) nên thêm dropout
+
+batch_size: 32
+learning_rate: 1.0e-3      # Adam (bài báo dùng Adagrad 0.15)
+grad_clip: 2.0
+epochs: 30
+max_minutes: 0             # >0: dừng theo thời gian
+log_every: 50
+eval_every: 250
+val_batches: 40
+seed: 42
+
+decode_max_len: 140
+decode_min_len: 40

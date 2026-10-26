@@ -17,6 +17,8 @@ models/*
 !models/.gitkeep
 outputs/results/*
 !outputs/results/.gitkeep
+outputs/predictions/
+outputs/logs/
 *.ckpt
 *.pt
 *.pth

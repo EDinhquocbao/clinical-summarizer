@@ -1,0 +1,6 @@
+# Phương pháp chính (pha 1): Pointer-Generator
+base: summarization_base.yaml
+name: pointer_gen
+use_copy: true
+use_coverage: false
+output_dir: models/pointer_gen

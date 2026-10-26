@@ -5,6 +5,7 @@ import importlib
 import platform
 import sys
 
+sys.stdout.reconfigure(encoding="utf-8")  # tránh UnicodeEncodeError khi console không phải UTF-8
 print("Python:", sys.version.split()[0], "|", platform.platform())
 
 for name in ("torch", "transformers", "datasets", "evaluate", "seqeval", "gradio"):
