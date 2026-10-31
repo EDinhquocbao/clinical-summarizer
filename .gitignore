@@ -45,3 +45,6 @@ env/
 !.vscode/extensions.json
 .DS_Store
 Thumbs.db
+
+# ===== Cài đặt Claude Code cá nhân =====
+.claude/settings.local.json

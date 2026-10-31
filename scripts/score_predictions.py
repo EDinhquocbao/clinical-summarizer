@@ -52,6 +52,7 @@ def main() -> None:
     ap.add_argument("--data_dir", default="data/processed/asclepius_sum")
     ap.add_argument("--split", default="test")
     ap.add_argument("--max_source_len", type=int, default=512)
+    ap.add_argument("--prefix", default="", help="tiền tố tên file dự đoán, vd mimic_")
     args = ap.parse_args()
     rows = read_jsonl(ROOT / args.data_dir / f"{args.split}.jsonl")
     refs = {r["id"]: r["target"] for r in rows}
@@ -60,20 +61,21 @@ def main() -> None:
 
     results = {}
     for name in ORDER:
-        path = OUTPUTS_DIR / "predictions" / f"{name}_{args.split}.jsonl"
+        path = OUTPUTS_DIR / "predictions" / f"{args.prefix}{name}_{args.split}.jsonl"
         if path.exists():
             results[name] = score_file(path, refs, srcs, args.max_source_len)
             print(name, results[name])
 
     res_dir = OUTPUTS_DIR / "results"
     res_dir.mkdir(parents=True, exist_ok=True)
-    (res_dir / "summary_results.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
+    tag = f"_{args.prefix.rstrip('_')}" if args.prefix else ""
+    (res_dir / f"summary_results{tag}.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
     cols = ["rouge1", "rouge2", "rougeL", "len", "novel2", "rep3", "num_recall", "num_halluc", "p_gen"]
     lines = [f"Tập {args.split}, n = {next(iter(results.values()))['n']}, độ dài tham chiếu TB = {ref_len:.0f} token\n",
              "| Mô hình | " + " | ".join(cols) + " |", "|---" * (len(cols) + 1) + "|"]
     for name, r in results.items():
         lines.append(f"| {name} | " + " | ".join("-" if r[c] is None else str(r[c]) for c in cols) + " |")
-    (res_dir / "summary_results.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (res_dir / f"summary_results{tag}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
 
 

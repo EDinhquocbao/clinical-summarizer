@@ -68,13 +68,14 @@ def to_device(batch, device):
 
 
 @torch.no_grad()
-def evaluate_loss(model, loader, device, max_batches=None) -> float:
+def evaluate_loss(model, loader, device, max_batches=None, amp=False) -> float:
     model.eval()
     total, n = 0.0, 0
     for i, batch in enumerate(loader):
         if max_batches and i >= max_batches:
             break
-        out = model(to_device(batch, device))
+        with torch.autocast(device.type, dtype=torch.float16, enabled=amp):
+            out = model(to_device(batch, device))
         total += out["nll"].item()
         n += 1
     model.train()
@@ -116,44 +117,71 @@ def main() -> None:
     print(f"Mô hình {cfg['name']}: {n_params / 1e6:.1f}M tham số | {len(train_rows)} mẫu train | {device}")
 
     opt = torch.optim.Adam(model.parameters(), lr=cfg["learning_rate"])
+    # amp: fp16 cho attention/LSTM (nhanh hơn, ít VRAM hơn); loss vẫn tính fp32 trong autocast
+    amp = bool(cfg.get("amp", False)) and device.type == "cuda"
+    scaler = torch.amp.GradScaler("cuda", enabled=amp)
+    # lr_patience > 0: giảm lr một nửa khi val NLL không giảm sau lr_patience lần đánh giá
+    sched = (torch.optim.lr_scheduler.ReduceLROnPlateau(opt, factor=0.5, patience=cfg["lr_patience"])
+             if cfg.get("lr_patience") else None)
     out_dir = ROOT / cfg["output_dir"]
     out_dir.mkdir(parents=True, exist_ok=True)
     log_path = out_dir / "train_log.jsonl"
-    log_f = open(log_path, "w", encoding="utf-8")
 
-    best_val, step, start = math.inf, 0, time.time()
+    best_val, step, start_epoch = math.inf, 0, 0
+    if cfg.get("resume"):   # chạy tiếp từ last.pt (vd máy tắt giữa chừng); max_minutes tính lại từ đầu
+        ck = torch.load(ROOT / cfg["resume"], map_location=device)
+        model.load_state_dict(ck["model"])
+        opt.load_state_dict(ck["opt"])
+        scaler.load_state_dict(ck["scaler"])
+        if sched and ck.get("sched"):
+            sched.load_state_dict(ck["sched"])
+        best_val, step, start_epoch = ck["best_val"], ck["step"], ck["epoch"] + 1
+        print(f"Chạy tiếp từ {cfg['resume']}: bước {step}, best val NLL {best_val:.4f}")
+    log_f = open(log_path, "a" if cfg.get("resume") else "w", encoding="utf-8")
+
+    start = time.time()
     budget = cfg.get("max_minutes", 0) * 60
     stop = False
-    for epoch in range(cfg["epochs"]):
+    for epoch in range(start_epoch, cfg["epochs"]):
         for batch in train_loader:
-            out = model(to_device(batch, device), cov_weight=cfg.get("cov_weight", 1.0))
+            with torch.autocast(device.type, dtype=torch.float16, enabled=amp):
+                out = model(to_device(batch, device), cov_weight=cfg.get("cov_weight", 1.0))
             opt.zero_grad()
-            out["loss"].backward()
+            scaler.scale(out["loss"]).backward()
+            scaler.unscale_(opt)
             torch.nn.utils.clip_grad_norm_(model.parameters(), cfg["grad_clip"])
-            opt.step()
+            scaler.step(opt)
+            scaler.update()
             step += 1
 
             if step % cfg["log_every"] == 0:
                 rec = {"step": step, "epoch": epoch, "minutes": round((time.time() - start) / 60, 2),
-                       **{k: round(v.item(), 4) for k, v in out.items()}}
+                       **{k: round(v.item(), 4) for k, v in out.items()},
+                       "lr": opt.param_groups[0]["lr"]}
                 if device.type == "cuda":
                     rec["gpu_mb"] = round(torch.cuda.max_memory_allocated() / 2**20)
                 if step % cfg["eval_every"] == 0:
-                    rec["val_nll"] = round(evaluate_loss(model, val_loader, device, cfg.get("val_batches")), 4)
+                    rec["val_nll"] = round(evaluate_loss(model, val_loader, device, cfg.get("val_batches"), amp), 4)
+                    if sched:
+                        sched.step(rec["val_nll"])
                     if rec["val_nll"] < best_val:
                         best_val = rec["val_nll"]
                         torch.save({"model": model.state_dict(), "config": cfg, "step": step},
                                    out_dir / "best.pt")
+                    torch.save({"model": model.state_dict(), "opt": opt.state_dict(), "scaler": scaler.state_dict(),
+                                "sched": sched.state_dict() if sched else None, "config": cfg, "step": step,
+                                "epoch": epoch, "best_val": best_val}, out_dir / "last.pt")
                 print(json.dumps(rec, ensure_ascii=False), flush=True)
                 log_f.write(json.dumps(rec) + "\n")
                 log_f.flush()
-            if budget and time.time() - start > budget:
+            # max_steps: cho Seq2seq và PG cùng số bước để so sánh công bằng
+            if (budget and time.time() - start > budget) or (cfg.get("max_steps") and step >= cfg["max_steps"]):
                 stop = True
                 break
         if stop:
             break
 
-    val_nll = evaluate_loss(model, val_loader, device, cfg.get("val_batches"))
+    val_nll = evaluate_loss(model, val_loader, device, cfg.get("val_batches"), amp)
     if val_nll < best_val:
         best_val = val_nll
         torch.save({"model": model.state_dict(), "config": cfg, "step": step}, out_dir / "best.pt")

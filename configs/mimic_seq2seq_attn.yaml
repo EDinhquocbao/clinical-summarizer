@@ -1,0 +1,6 @@
+# Đối sánh: Seq2seq BiLSTM + attention, KHÔNG copy, KHÔNG coverage
+base: mimic_base.yaml
+name: mimic_seq2seq_attn
+use_copy: false
+use_coverage: false
+output_dir: models/mimic_seq2seq_attn

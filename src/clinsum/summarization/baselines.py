@@ -49,15 +49,18 @@ def main() -> None:
     ap.add_argument("--data_dir", default="data/processed/asclepius_sum")
     ap.add_argument("--split", default="test")
     ap.add_argument("--limit", type=int, default=1000)
+    ap.add_argument("--prefix", default="", help="tiền tố tên file dự đoán, vd mimic_")
     args = ap.parse_args()
     rows = read_jsonl(ROOT / args.data_dir / f"{args.split}.jsonl")[: args.limit]
     out_dir = ROOT / "outputs/predictions"
     out_dir.mkdir(parents=True, exist_ok=True)
-    # request_only: chỉ chép câu yêu cầu, đo phần ROUGE "miễn phí" do câu yêu cầu đã nêu chẩn đoán
-    for name, fn in (("request_only", lambda r: r["source"].split("\n", 1)[0].removeprefix("request: ")),
-                     ("lead3", lambda r: lead_k(r["source"], 3)),
-                     ("oracle_ext", lambda r: greedy_oracle(r["source"], r["target"]))):
-        path = out_dir / f"{name}_{args.split}.jsonl"
+    baselines = [("lead3", lambda r: lead_k(r["source"], 3)),
+                 ("oracle_ext", lambda r: greedy_oracle(r["source"], r["target"]))]
+    # request_only: chỉ chép câu yêu cầu, đo phần ROUGE "miễn phí" do câu yêu cầu đã nêu chẩn đoán (chỉ Asclepius)
+    if rows and rows[0]["source"].startswith("request:"):
+        baselines.insert(0, ("request_only", lambda r: r["source"].split("\n", 1)[0].removeprefix("request: ")))
+    for name, fn in baselines:
+        path = out_dir / f"{args.prefix}{name}_{args.split}.jsonl"
         with open(path, "w", encoding="utf-8") as f:
             for r in rows:
                 f.write(json.dumps({"id": r["id"], "prediction": fn(r)}, ensure_ascii=False) + "\n")

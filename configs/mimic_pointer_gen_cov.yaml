@@ -1,0 +1,12 @@
+# Phương pháp chính (pha 2): bật coverage, khởi tạo từ Pointer-Generator đã huấn luyện
+# (See et al. huấn luyện thêm ~3000 bước với coverage, cov_weight = 1)
+base: mimic_base.yaml
+name: mimic_pointer_gen_cov
+use_copy: true
+use_coverage: true
+cov_weight: 1.0
+init_from: models/mimic_pointer_gen/best.pt
+learning_rate: 5.0e-4
+epochs: 2
+eval_every: 200
+output_dir: models/mimic_pointer_gen_cov

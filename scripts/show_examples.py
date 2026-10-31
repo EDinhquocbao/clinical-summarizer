@@ -21,7 +21,9 @@ def main() -> None:
     ap.add_argument("--n", type=int, default=5)
     ap.add_argument("--ids", nargs="*")
     args = ap.parse_args()
-    rows = {r["id"]: r for r in read_jsonl(ROOT / args.data_dir / "test.jsonl")}
+    if "mimic" in args.data_dir.lower():
+        sys.exit("Không in ví dụ MIMIC (DUA PhysioNet). Dùng Asclepius hoặc văn bản tự soạn cho slide.")
+    rows ={r["id"]: r for r in read_jsonl(ROOT / args.data_dir / "test.jsonl")}
     preds = {}
     for m in MODELS:
         path = OUTPUTS_DIR / "predictions" / f"{m}_test.jsonl"

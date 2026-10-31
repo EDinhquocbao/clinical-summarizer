@@ -1,0 +1,20 @@
+# Cấu hình chung cho MIMIC-IV-Note (các mục khác → Brief Hospital Course).
+# CÁC GIÁ TRỊ ĐỘ DÀI LÀ TẠM: chỉnh lại sau khi chạy scripts/prepare_mimic.py và xem outputs/results/mimic_stats.json.
+base: summarization_base.yaml
+data_dir: data/processed/mimic_bhc
+vocab_path: models/vocab_mimic_30k.json   # suy ra từ MIMIC: không đưa lên git, không mở trong hội thoại với Claude
+vocab_size: 30000          # 50k + batch 32 cần 6,3GB > VRAM (tràn RAM, 5,7 s/bước)
+batch_size: 16             # đo 30/10: batch 32 chậm hơn batch 16 (cả fp32 và fp16)
+
+# EDA 30/10/2026 (prepare_mimic.py --max_target_words 250): 109.757 cặp, chia 87.352 / 11.208 / 11.197.
+# Đầu vào token p50 630, p75 949; BHC token p50 198, p95 287, p99 317.
+max_source_len: 1200       # giữ trọn ~87% ghi chú (800: ~65%)
+amp: true                  # fp16: 1,25 s/bước, 1,8GB ở batch 16 (fp32 nguồn 800: 2 s/bước, 2,1GB)
+lr_patience: 4             # giảm lr một nửa nếu val NLL không giảm sau 4 lần đánh giá
+val_batches: 60
+max_target_len: 300        # ~p97 của BHC (đã lọc <= 250 từ)
+train_limit: 0             # dùng toàn bộ train; số bước do max_minutes quyết định
+val_limit: 1000
+
+decode_max_len: 300
+decode_min_len: 80
